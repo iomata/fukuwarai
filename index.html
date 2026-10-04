@@ -1,0 +1,483 @@
+html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>にゅうの福笑い</title>
+
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+    font-family: sans-serif;
+    background: #fff5df;
+    color: #49352b;
+  }
+
+  h1 {
+    color: #c65338;
+  }
+
+  #face {
+    width: 300px;
+    height: 350px;
+    margin: 20px auto;
+    position: relative;
+    background: #ffe0a6;
+    border: 4px solid #d69b58;
+    border-radius: 48% 48% 45% 45%;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  #face-base {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  .part {
+    position: absolute;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transform: translate(-50%, -50%);
+  }
+
+  .part img {
+    width: 70px;
+    height: auto;
+    display: block;
+    pointer-events: none;
+  }
+
+  .eye img {
+    width: 45px;
+  }
+
+  .nose img {
+    width: 45px;
+  }
+
+  .part:active {
+    cursor: grabbing;
+  }
+
+  .buttons {
+    margin: 15px;
+  }
+
+  button {
+    padding: 12px 18px;
+    margin: 5px;
+    border: 0;
+    border-radius: 10px;
+    background: #c65338;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  #message {
+    min-height: 24px;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>🎎 にゅうの福笑い</h1>
+
+<p>目・鼻・口をドラッグして、面白い顔を作ろう！</p>
+
+<div id="face">
+
+  <!-- 顔 -->
+  <img
+    src="images/zentai.png"
+    id="face-base"
+    alt="顔全体"
+  >
+
+  <!-- 左目 -->
+  <div class="part eye" style="left:90px; top:110px">
+    <img src="images/eye1.png" alt="左目">
+  </div>
+
+  <!-- 右目 -->
+  <div class="part eye" style="left:210px; top:110px">
+    <img src="images/eye2.png" alt="右目">
+  </div>
+
+  <!-- 鼻 -->
+  <div class="part nose" style="left:150px; top:175px">
+    <img src="images/nose1.png" alt="鼻">
+  </div>
+
+  <!-- 口 -->
+  <div class="part mouth" style="left:150px; top:245px">
+    <img src="images/mouth1.png" alt="口">
+  </div>
+
+</div>
+
+<div class="buttons">
+  <button onclick="resetFace()">やり直す</button>
+  <button onclick="saveFace()">画像を保存</button>
+  <button onclick="shareFace()">顔を共有</button>
+</div>
+
+<p id="message"></p>
+
+<script>
+
+const face = document.getElementById("face");
+const parts = [...document.querySelectorAll(".part")];
+
+let selected = null;
+let offsetX = 0;
+let offsetY = 0;
+
+
+/* =========================
+   パーツを動かす
+========================= */
+
+parts.forEach(part => {
+
+  // 最初の位置を保存
+  part.dataset.startX = parseFloat(part.style.left);
+  part.dataset.startY = parseFloat(part.style.top);
+
+  part.addEventListener("pointerdown", e => {
+
+    selected = part;
+
+    const rect = face.getBoundingClientRect();
+
+    offsetX =
+      e.clientX -
+      rect.left -
+      parseFloat(part.style.left);
+
+    offsetY =
+      e.clientY -
+      rect.top -
+      parseFloat(part.style.top);
+
+    part.setPointerCapture(e.pointerId);
+  });
+
+
+  part.addEventListener("pointermove", e => {
+
+    if (selected !== part) return;
+
+    const rect = face.getBoundingClientRect();
+
+    let x =
+      e.clientX -
+      rect.left -
+      offsetX;
+
+    let y =
+      e.clientY -
+      rect.top -
+      offsetY;
+
+    // 顔の外に行きすぎないようにする
+    x = Math.max(0, Math.min(300, x));
+    y = Math.max(0, Math.min(350, y));
+
+    part.style.left = x + "px";
+    part.style.top = y + "px";
+  });
+
+
+  part.addEventListener("pointerup", () => {
+    selected = null;
+  });
+
+
+  part.addEventListener("pointercancel", () => {
+    selected = null;
+  });
+
+});
+
+
+/* =========================
+   やり直す
+========================= */
+
+function resetFace() {
+
+  parts.forEach(part => {
+
+    part.style.left =
+      Number(part.dataset.startX) + "px";
+
+    part.style.top =
+      Number(part.dataset.startY) + "px";
+
+  });
+
+  document.getElementById("message").textContent =
+    "元の顔に戻したよ！";
+}
+
+
+/* =========================
+   共有データ
+========================= */
+
+function getFaceData() {
+
+  return parts.map(part => ({
+
+    x: parseFloat(part.style.left),
+    y: parseFloat(part.style.top)
+
+  }));
+
+}
+
+
+/* =========================
+   顔を共有
+========================= */
+
+function shareFace() {
+
+  const data =
+    encodeURIComponent(
+      JSON.stringify(getFaceData())
+    );
+
+  const url =
+    location.href.split("#")[0] +
+    "#face=" +
+    data;
+
+  if (url.length > 8000) {
+
+    document.getElementById("message").textContent =
+      "共有データが長すぎます。";
+
+    return;
+  }
+
+
+  if (
+    navigator.clipboard &&
+    location.protocol !== "file:"
+  ) {
+
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+
+        document.getElementById("message").textContent =
+          "共有URLをコピーしたよ！";
+
+      })
+      .catch(() => {
+
+        prompt(
+          "このURLをコピーして共有してね",
+          url
+        );
+
+      });
+
+  } else {
+
+    prompt(
+      "このURLをコピーして共有してね",
+      url
+    );
+
+  }
+
+}
+
+
+/* =========================
+   共有された顔を読み込む
+========================= */
+
+function loadFace() {
+
+  const hash = location.hash;
+
+  if (!hash.startsWith("#face=")) {
+    return;
+  }
+
+  try {
+
+    const data =
+      JSON.parse(
+        decodeURIComponent(hash.slice(6))
+      );
+
+
+    data.forEach((item, i) => {
+
+      if (
+        !parts[i] ||
+        !Number.isFinite(item.x) ||
+        !Number.isFinite(item.y)
+      ) {
+        return;
+      }
+
+      parts[i].style.left =
+        item.x + "px";
+
+      parts[i].style.top =
+        item.y + "px";
+
+    });
+
+  } catch (e) {
+
+    console.log(
+      "共有データを読み込めませんでした"
+    );
+
+  }
+
+}
+
+loadFace();
+
+
+/* =========================
+   画像を保存
+========================= */
+
+function saveFace() {
+
+  const canvas =
+    document.createElement("canvas");
+
+  canvas.width = 600;
+  canvas.height = 700;
+
+  const ctx =
+    canvas.getContext("2d");
+
+
+  // 背景
+  ctx.fillStyle = "#fff5df";
+  ctx.fillRect(
+    0,
+    0,
+    600,
+    700
+  );
+
+
+  // 顔
+  ctx.fillStyle = "#ffe0a6";
+  ctx.strokeStyle = "#d69b58";
+  ctx.lineWidth = 8;
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    300,
+    350,
+    270,
+    315,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+  ctx.stroke();
+
+
+  // 画像を読み込んで描画
+  const imagePromises =
+    parts.map(part => {
+
+      return new Promise(resolve => {
+
+        const img =
+          part.querySelector("img");
+
+        const x =
+          parseFloat(part.style.left) * 2;
+
+        const y =
+          parseFloat(part.style.top) * 2;
+
+        const width =
+          img.getBoundingClientRect().width * 2;
+
+        const height =
+          img.getBoundingClientRect().height * 2;
+
+
+        const drawImage = () => {
+
+          ctx.drawImage(
+            img,
+            x - width / 2,
+            y - height / 2,
+            width,
+            height
+          );
+
+          resolve();
+
+        };
+
+
+        if (img.complete) {
+
+          drawImage();
+
+        } else {
+
+          img.onload = drawImage;
+
+        }
+
+      });
+
+    });
+
+
+  Promise.all(imagePromises).then(() => {
+
+    const link =
+      document.createElement("a");
+
+    link.download =
+      "fukuwarai.png";
+
+    link.href =
+      canvas.toDataURL("image/png");
+
+    link.click();
+
+    document.getElementById("message").textContent =
+      "画像を保存したよ！";
+
+  });
+
+}
+
+</script>
+
+</body>
+</html>
